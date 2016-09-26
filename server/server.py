@@ -1,7 +1,5 @@
-import base64
-import hashlib
-from base64 import b64encode
-
+from base64 import urlsafe_b64encode
+from hashlib import sha256
 from bottle import run, request, post, response
 import hmac
 import jwt
@@ -36,24 +34,16 @@ def validate_token(auth_header):
     token = auth_header.split()[1]
     header, claims, signature = tuple(token.split('.'))
 
+    digester = hmac.new(SECRET, digestmod=sha256)
+    digester.update(header.encode('utf8'))
+    digester.update('.'.encode('utf8'))
+    digester.update(claims.encode('utf8'))
+    digest = digester.digest()
 
-    # utils base64 encode
-    # base64.urlsafe_b64encode(input).replace(b'=', b'')
+    calculated = urlsafe_b64encode(digest).replace(b'=', b'')
+    posted = bytes(signature, 'utf8')
 
-    # base64_encode('')
-
-    def encode(x):
-        return base64.urlsafe_b64encode(x).replace(b'=', b'')
-
-    alg = hashlib.sha256
-
-    msg = header + '.' + claims
-    digest = encode(hmac.new(SECRET, msg.encode('utf8'), digestmod=alg).digest())
-
-    print(signature)
-    # 'Nace+U3Az4OhN7tISqgs1vdLBHBEijWcBeCqL5xN9xg='
-
-    return digest == bytes(signature, 'utf8')
+    return calculated == posted
 
 
 def unauthorized():
