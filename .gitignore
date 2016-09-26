@@ -1,4 +1,6 @@
 server/venv
-server/.idea
+.idea
 *iml
 __pycache__
+node_modules
+npm-debug.log
