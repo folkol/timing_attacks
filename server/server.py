@@ -1,59 +1,64 @@
+import base64
 import hashlib
-import hmac
-from base64 import b64decode
-from functools import wraps
+from base64 import b64encode
 
+from bottle import run, request, post, response
+import hmac
 import jwt
-from flask import Flask, request, jsonify
 
 passwords = {'admin': 'password'}
-SECRET = 'Very secret indeed!'
-
-app = Flask(__name__)
+SECRET = b'Very secret indeed'
 
 
-@app.route('/login', methods=['POST'])
-def login():
-    credentials = request.get_json(force=True)
-    username, password = credentials.get('username'), credentials.get('password')
+@post('/login')
+def index():
+    username, password = request.json['username'], request.json['password']
 
-    if passwords.get('admin') != password:
-        return jsonify(reason='Unauthorized!'), 401
+    if passwords[username] != password:
+        return unauthorized()
 
-    claims = {
-        'genuine': 'Hell yeah!'
-    }
-    token = jwt.encode(claims, SECRET)
-    return jsonify(token=token.decode('UTF-8')), 201
+    token = jwt.encode({'legitimate': 'Hell yeah!'}, SECRET)
+
+    return {'token': token.decode()}
 
 
-def secured(f):
-    @wraps(f)
-    def check_auth(*args, **kwargs):
-        authorization_ = request.headers['Authorization']
-        token = authorization_.split()[1]
-        token = token.split('_')[0]
-        header, claims, signature = token.split('.')
-
-        print(header, claims, signature)
-
-        digester = hmac.new(bytearray(SECRET, 'utf8'), digestmod=hashlib.sha256)
-        digester.update(b64decode(header))
-        digester.update(b64decode(claims))
-
-        decode = b64decode(signature)
-        if digester.digest() != decode:
-            return jsonify(reason='Unauthorized!'), 401
-
-        return f(*args, **kwargs)
-
-    return check_auth
-
-
-@app.route('/comments', methods=['POST'])
-@secured
+@post('/comments/')
 def comment():
-    print('Adding comment!')
-    return jsonify(message='Success!'), 201
+    auth_header = request.headers['Authorization']
 
-app.run()
+    if not validate_token(auth_header):
+        return unauthorized()
+
+    return {'message': 'Comment added!'}
+
+
+def validate_token(auth_header):
+    token = auth_header.split()[1]
+    header, claims, signature = tuple(token.split('.'))
+
+
+    # utils base64 encode
+    # base64.urlsafe_b64encode(input).replace(b'=', b'')
+
+    # base64_encode('')
+
+    def encode(x):
+        return base64.urlsafe_b64encode(x).replace(b'=', b'')
+
+    alg = hashlib.sha256
+
+    msg = header + '.' + claims
+    digest = encode(hmac.new(SECRET, msg.encode('utf8'), digestmod=alg).digest())
+
+    print(signature)
+    # 'Nace+U3Az4OhN7tISqgs1vdLBHBEijWcBeCqL5xN9xg='
+
+    return digest == bytes(signature, 'utf8')
+
+
+def unauthorized():
+    response.status = 401
+    return {'reason': 'Not authenticated!'}
+
+
+run()
